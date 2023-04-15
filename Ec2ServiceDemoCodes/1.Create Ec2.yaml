@@ -1,0 +1,37 @@
+Resources:
+  MyDemoEC2Instance1:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Key: Name
+            Value: Adi_Devopstest1
+  MyDemoEC2Instance2:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Key: Name
+            Value: Adi_Devopstest2
+  MyDemoEC2Instance3:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Key: Name
+            Value: Adi_Devopstest3
+  MyDemoEC2Instance4:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Key: Name
+            Value: Adi_Devopstest4

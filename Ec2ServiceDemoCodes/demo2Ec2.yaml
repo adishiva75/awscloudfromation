@@ -1,0 +1,21 @@
+Resources:
+  MyDemoEC2Instance:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Value: Name
+            Key: Devopsinstance
+  MyDemoEC2Instance2:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-04581fbf744a7d11f
+        InstanceType: t2.micro 
+        KeyName: Learn_Devops
+        Tags:
+          - Value: Name
+            Key: Devopstest
+  
+        

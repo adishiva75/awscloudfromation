@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  MyLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - ec2:*
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:*
+                Resource: '*'
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          region = 'us-east-1'
+          instances = ['i-0e670d5573856df7f','i-02c20e95ac39fa990','i-084019cc7d5795f88','i-038b32036a1bb5b9f','i-09737ced163ad8fc3','i-000607e012d5ffeaf','i-0b0aae5373ef16ffc','i-081a647b1dc30a245']
+          ec2 = boto3.client('ec2', region_name=region)
+          def lambda_handler(event, context):
+              ec2.start_instances(InstanceIds=instances)
+              print('start your instances: ' + str(instances))
+      Handler: index.lambda_handler
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+      Runtime: python3.9
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ec2-stop-instances
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:StartInstances'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: MyLambdaFunction
+  MyLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref LambdaFunction]]
+      RetentionInDays: 30
+Outputs:
+  MyLambdaFunctionArn:
+    Value: !GetAtt LambdaFunction.Arn
+    Description: The ARN of the Lambda function.

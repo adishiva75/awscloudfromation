@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  TestLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - ec2:*
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:*
+                Resource: '*'
+  TestLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          region = 'us-east-1'
+          ec2 = boto3.client('ec2', region_name=region)
+          filters = [{'Name': 'instance-state-name', 'Values': ['running']}]
+          response = ec2.describe_instances(Filters=filters)
+          instances = []
+          for reservation in response['Reservations']:
+              for instance in reservation['Instances']:
+                  instances.append(instance['InstanceId'])
+          def lambda_handler(event, context):
+              ec2.stop_instances(InstanceIds=instances)
+              print('stopped your instances: ' + str(instances))
+      Handler: index.lambda_handler
+      Role: !GetAtt [ TestLambdaRole, Arn ]
+      Runtime: python3.9
+  TestLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ec2-start-instances
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:StartInstances'
+                  - 'ec2:DescribeInstances'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: TestLambdaFunction
+  TestLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref TestLambdaFunction]]
+      RetentionInDays: 30
+  TestEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: RunTestLambdaFunction
+      Description: Schedule to run the Lambda function every day at 2PM UTC
+      ScheduleExpression: 'cron(0 14 * * ? *)' 
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TestLambdaFunction.Arn
+          Id: RunMyLambdaFunction
+Outputs:
+  MyLambdaFunctionArn:
+    Value: !GetAtt TestLambdaFunction.Arn
+    Description: The ARN of the Lambda function.
