@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  S3BucketListLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:ListAllMyBuckets'
+                Resource: '*'
+  S3BucketListLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import datetime
+
+          def lambda_handler(event, context):
+              s3 = boto3.client('s3')
+              response = s3.list_buckets()
+              for bucket in response['Buckets']:
+                  creation_date = bucket['CreationDate'].replace(tzinfo=None)
+                  if datetime.datetime.now() - creation_date > datetime.timedelta(days=30):
+                      print(bucket['Name'])
+      Handler: index.lambda_handler
+      Role: !GetAtt [ S3BucketListLambdaRole, Arn ]
+      Runtime: python3.9
+  S3BucketListLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: s3-list-buckets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:ListAllMyBuckets'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: S3BucketListLambdaFunction
+  S3BucketListLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref S3BucketListLambdaFunction]]
+      RetentionInDays: 30
+Outputs:
+  S3BucketListLambdaFunctionArn:
+    Value: !GetAtt S3BucketListLambdaFunction.Arn
+    Description: The ARN of the Lambda function.
