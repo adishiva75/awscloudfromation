@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  TerminateUnusedEC2Instances:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import datetime
+          ec2 = boto3.resource('ec2')
+          def lambda_handler(event, context):
+              # Set the number of days after which an instance is considered unused
+              days_to_keep = 15
+              instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+              for instance in instances:
+                  launch_time = instance.launch_time
+                  elapsed_days = (datetime.datetime.now(datetime.timezone.utc) - launch_time).days
+                  if elapsed_days >= days_to_keep:
+                      print(f'Terminating instance {instance.id} launched on {launch_time}')
+                      instance.terminate()
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Timeout: 300
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: "/"
+      Policies:
+        - PolicyName: "EC2TerminatePolicy"
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: "*"
+  Resources:
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger the TerminateUnusedEC2Instances Lambda function every day"
+      ScheduleExpression: "cron(0 0 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TerminateUnusedEC2Instances.Arn
+          Id: "TargetFunctionV1"
